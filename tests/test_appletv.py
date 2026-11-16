@@ -209,3 +209,14 @@ def test_art_channel_skips_client_connect_notice(monkeypatch):
     monkeypatch.setattr(SamsungTVWSConnection, 'open', lambda self: setattr(self, 'connection', Sock()))
     a = art.SamsungTVArt('192.168.1.50', port=8002)
     assert a.open() is a.connection and tv.NAME
+
+
+def test_mac_learned_while_frame_is_on(monkeypatch, tmp_path):
+    monkeypatch.setattr(appletv, 'MAC_FILE', str(tmp_path / 'tv-mac.txt'))
+    assert appletv.wake_on_lan() is False                 # nothing learned yet, and the log says so
+
+    class Rest:
+        def rest_device_info(self): return {'device': {'wifiMac': 'aa:bb:cc:dd:ee:ff'}}
+    monkeypatch.setattr(appletv.tv, '_tv', lambda ip, t: Rest())
+    appletv._remember_mac('192.168.1.50')
+    assert (tmp_path / 'tv-mac.txt').read_text() == 'aa:bb:cc:dd:ee:ff'

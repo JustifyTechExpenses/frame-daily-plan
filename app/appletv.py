@@ -61,7 +61,7 @@ def reachable(ip):
 
 
 def _remember_mac(ip):
-    if os.path.exists(MAC_FILE):
+    if not ip or os.path.exists(MAC_FILE):
         return
     try:
         mac = tv._tv(ip, 5).rest_device_info()['device'].get('wifiMac', '')
@@ -74,6 +74,7 @@ def _remember_mac(ip):
 
 def wake_on_lan():
     if not os.path.exists(MAC_FILE):
+        jobs.log('Wake-on-LAN not possible yet: the MAC address is learned once the Frame has been on for a moment')
         return False
     with open(MAC_FILE) as f:
         mac = bytes.fromhex(f.read().strip().replace(':', '').replace('-', ''))
@@ -321,6 +322,8 @@ class Watcher(PowerListener, DeviceListener):
                     if not now.get('enabled') or now.get('id') != atv_cfg['id']:
                         jobs.log('Apple TV watching stopped')
                         return
+                    if not os.path.exists(MAC_FILE):  # learn it while the Frame is on, for Wake-on-LAN later
+                        await asyncio.to_thread(_remember_mac, config.load().get('tv_ip', ''))
                     state = self.atv.power.power_state  # in case a pushed update was missed
                     if state in (PowerState.On, PowerState.Off) and state != self.handled:
                         self.powerstate_update(self.handled, state)
