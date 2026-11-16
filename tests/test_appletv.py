@@ -192,3 +192,20 @@ def test_cec_setting_saved():
     assert config.load()['appletv']['cec'] is True
     c.post('/appletv/enabled', data={'enabled': 'on'})
     assert config.load()['appletv']['cec'] is False
+
+
+def test_art_channel_skips_client_connect_notice(monkeypatch):
+    import json
+    import tv
+    from samsungtvws import art
+    from samsungtvws.connection import SamsungTVWSConnection
+
+    class Sock:
+        msgs = [json.dumps({'event': 'ms.channel.clientConnect', 'data': {'attributes': {'token': '1'}}}),
+                json.dumps({'event': 'ms.channel.ready'})]
+        def recv(self): return self.msgs.pop(0)
+        def close(self): pass
+
+    monkeypatch.setattr(SamsungTVWSConnection, 'open', lambda self: setattr(self, 'connection', Sock()))
+    a = art.SamsungTVArt('192.168.1.50', port=8002)
+    assert a.open() is a.connection and tv.NAME
