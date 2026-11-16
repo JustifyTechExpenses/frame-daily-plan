@@ -18,6 +18,11 @@ DEFAULTS = {
     'schedule': {'enabled': True, 'start': '07:00', 'end': '10:00', 'days': [0, 1, 2, 3, 4, 5, 6]},
     'dim_past_events': True,
     'background': 'artwork',  # "artwork": the picture the plan replaces, "default": bundled background
+    # Apple TV asleep -> Frame to Art Mode (see appletv.py); credentials live in pyatv.json
+    # night_off: inside this window the Frame is switched off completely instead of Art Mode
+    # cec: the Apple TV still controls the Frame over HDMI-CEC ("Control TVs and Receivers" on)
+    'appletv': {'enabled': False, 'id': '', 'name': '', 'address': '', 'cec': False,
+                'night_off': {'enabled': False, 'start': '23:00', 'end': '06:00'}},
 }
 
 COLORS = ['green', 'blue', 'orange', 'red', 'grey']

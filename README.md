@@ -33,6 +33,7 @@ Art Mode is quiet, ad-free and always on the wall, so it's a good place for a fa
 
   ![Message](docs/message.jpg)
 
+- **Apple TV remote → Art Mode**: when your Apple TV goes to sleep, the Frame goes to Art Mode instead of switching off, and it comes back to the TV picture when the Apple TV wakes up (see below).
 - **Demo plan** with made-up data, for photos and videos.
 - Past events turn grey. Long titles shrink to fit and are never cut off.
 
@@ -85,6 +86,36 @@ Then open `http://<host>:8765`.
 
 Use **Create preview** to see the plan without touching the TV, and **Show plan now** to try it on the TV.
 
+## Apple TV: Art Mode instead of off
+
+With an Apple TV, the Apple TV remote switches the Frame off completely (over HDMI-CEC), so it never goes to Art Mode. Frame Daily Plan watches the Apple TV over the network and makes the Frame follow it:
+
+- **Apple TV goes to sleep** → the Frame goes to Art Mode (and shows today's plan, if it's plan time).
+- **Apple TV wakes up** → the Frame shows the TV picture.
+
+### Set up
+
+1. **Pair:** in the web page, card **Apple TV**, click **Search for Apple TV**, then **Pair**. A PIN appears on the TV; type it in within 30 seconds. The Frame must show the Apple TV picture while you pair.
+2. **On the Apple TV**, set *Settings → General → Sleep After* to **Never**, so it only sleeps when you put it to sleep. The app can't tell which input the Frame is showing, so an Apple TV falling asleep by itself would switch the Frame away while someone watches another input.
+3. **Choose one of two ways** for *Settings → Remotes and Devices → "Control TVs and Receivers"* on the Apple TV:
+
+| | "Control TVs and Receivers" **on** (tick the box in the card) | "Control TVs and Receivers" **off** |
+| --- | --- | --- |
+| Apple TV wakes up | The Apple TV switches the Frame on **and to its own input** (HDMI-CEC), even if a games console was on last | The app leaves Art Mode; the input stays where it was |
+| Apple TV goes to sleep | The Apple TV switches the Frame off; the app switches it back on into Art Mode with Wake-on-LAN (about a minute, network cable only) | The app sends the Frame to Art Mode after 3 seconds |
+| Volume | over HDMI-CEC as usual | set *Volume Control* to **IR** |
+| Best for | an Apple TV plus other devices, such as a games console | the Apple TV as the only device |
+
+A 2017 Frame ignores direct input keys sent over the network, which is why the app itself can't switch back to the Apple TV input.
+
+### Options
+
+- **At night, off completely:** inside a time window such as 23:00–06:00, the Frame stays off when the Apple TV goes to sleep. At the daily plan's start time the app switches it on with Wake-on-LAN, straight into Art Mode, so the plan still appears.
+- If the Frame was switched off completely (e.g. after a power cut), it is woken with Wake-on-LAN when the Apple TV wakes up. This needs the TV on a network cable, and the app must have seen the TV once to learn its MAC address.
+- Tip: on the Frame, turn off *Settings → General → Smart Features → Autorun Smart Hub*, so it returns to the last input instead of the Smart Hub.
+
+The Apple TV is watched with [pyatv](https://pyatv.dev/) over the local network (Companion protocol); the pairing is stored in `data/pyatv.json`. Tested with an Apple TV 4K (tvOS 27) and the 2017 Frame (UE55LS003). A 2017 Frame doesn't always report its Art Mode state while showing the TV picture, so no answer is taken as "TV picture".
+
 ## How it behaves
 
 - At the start time, the app remembers the current artwork, uploads a fresh plan and shows it. If the TV is in TV mode, the plan just waits.
@@ -101,6 +132,8 @@ The web page shows your private calendar links. Keep it inside your home network
 
 - **"TV not reachable" or "Connect" times out.** Press **Allow** on the TV while the app is waiting. If you once pressed *Deny*, open *Settings → General → External Device Manager → Device Connection Manager → Device List* on the TV, and allow or delete "Frame Daily Plan".
 - **"Search the network" finds nothing.** The container needs `network_mode: host`. Or enter the TV's IP address by hand.
+- **Apple TV: "The PIN expired".** The Apple TV closes the PIN screen after about 30 seconds. Click **Pair** again and type the new PIN straight away.
+- **Apple TV: the Frame stays dark after the Apple TV goes to sleep.** With "Control TVs and Receivers" on, the Frame comes back only through Wake-on-LAN: it needs a network cable, and the app must have reached the TV once while it was on. The log at the bottom of the page says what happened.
 - **New calendar entries don't show up.** Google updates secret iCal feeds with a delay, sometimes up to a few hours.
 - **The log** is at the bottom of the web page and in `data/frame-daily-plan.log`.
 
