@@ -49,7 +49,7 @@ def index():
     setup = {'tv': bool(cfg.get('tv_ip')), 'paired': os.path.exists(os.path.join(config.DATA, 'paired')),
              'place': cfg['weather'].get('lat') is not None, 'calendar': bool(cfg['calendars'])}
     return render_template('index.html', cfg=cfg, state=jobs.load_state(), log=list(jobs.recent)[-40:][::-1],
-                           colors=config.COLORS, lang=lang, t=i18n.texts(lang), setup=setup,
+                           colors=config.COLORS, lang=lang, version=os.environ.get('APP_VERSION', 'dev')[:7], t=i18n.texts(lang), setup=setup,
                            setup_done=all(setup.values()), countries=sorted(holidays.list_supported_countries()),
                            has_preview=os.path.exists(jobs.PREVIEW), message=request.args.get('msg'),
                            atv_pairing=appletv.pairing_in_progress())

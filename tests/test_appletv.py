@@ -220,3 +220,8 @@ def test_mac_learned_while_frame_is_on(monkeypatch, tmp_path):
     monkeypatch.setattr(appletv.tv, '_tv', lambda ip, t: Rest())
     appletv._remember_mac('192.168.1.50')
     assert (tmp_path / 'tv-mac.txt').read_text() == 'aa:bb:cc:dd:ee:ff'
+
+
+def test_version_in_footer(monkeypatch):
+    monkeypatch.setenv('APP_VERSION', 'f7ab5ca75afc')
+    assert 'Version f7ab5ca<' in web.app.test_client().get('/').get_data(as_text=True)
