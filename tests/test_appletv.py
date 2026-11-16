@@ -225,3 +225,13 @@ def test_mac_learned_while_frame_is_on(monkeypatch, tmp_path):
 def test_version_in_footer(monkeypatch):
     monkeypatch.setenv('APP_VERSION', 'f7ab5ca75afc')
     assert 'Version f7ab5ca<' in web.app.test_client().get('/').get_data(as_text=True)
+
+
+def test_cec_frame_drops_off_while_pressing(monkeypatch):
+    pressed, woken = cec_frame(monkeypatch, switched_off=False)
+    up = iter([True, False])                            # still there, then gone
+    monkeypatch.setattr(appletv, 'reachable', lambda ip: next(up, False))
+    def boom(ip): raise RuntimeError('TV unreachable')
+    monkeypatch.setattr(appletv, 'press_power', boom)
+    appletv.frame_follow(CEC, want_art=True)
+    assert woken == ['192.168.1.50']

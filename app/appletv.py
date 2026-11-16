@@ -41,7 +41,8 @@ MAC_FILE = os.path.join(config.DATA, 'tv-mac.txt')     # for Wake-on-LAN, read f
 CLIENT_NAME = 'Frame Daily Plan'
 SLEEP_DELAY = 3     # seconds the Apple TV must stay asleep before the Frame follows
 WAKE_TIMEOUT = 30   # seconds to wait for a Frame woken by Wake-on-LAN
-CEC_WAIT = 15       # seconds HDMI-CEC may take to switch the Frame off or on
+CEC_WAIT = 15       # seconds HDMI-CEC may take to switch the Frame on
+CEC_OFF_WAIT = 45   # a 2017 Frame can stay on the network for a while after CEC switched it off
 
 _loop = None
 _storage = None
@@ -171,9 +172,14 @@ def frame_follow_cec(cfg, want_art):
     ip = cfg['tv_ip']
     if want_art:
         _remember_mac(ip)  # needed to switch it back on; still reachable for a moment
-        if not _wait_until_off(ip, CEC_WAIT):
-            frame_follow(dict(cfg, appletv=dict(cfg.get('appletv', {}), cec=False)), True)
-            return  # the Frame stayed on (CEC off after all?): the usual way
+        if not _wait_until_off(ip, CEC_OFF_WAIT):
+            try:  # the Frame stayed on (CEC off after all?): the usual way
+                frame_follow(dict(cfg, appletv=dict(cfg.get('appletv', {}), cec=False)), True)
+                return
+            except Exception:  # noqa: BLE001
+                if reachable(ip):
+                    raise
+                # it only now dropped off the network: switched off by CEC after all
         if in_night(cfg):
             jobs.log('Apple TV asleep at night → Frame stays off')
             return
