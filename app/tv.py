@@ -1,9 +1,9 @@
 """Talking to the Frame's Art Mode.
 
-Frames differ by model year. Old ones (e.g. 2017, Art API 1.07) refuse the library's
-socket upload and send thumbnails in a way the library cannot decode; for those we do
-what the SmartThings app does (one binary WebSocket frame). Newer ones use the library's
-standard methods. Each call tries one way and falls back to the other.
+Frames differ by model year. The library's standard methods handle newer Frames (2019+,
+e.g. a 2022 LS03B) and detect old ones itself. Old Frames (e.g. 2017, Art API 1.07) can
+also take one binary WebSocket frame, as the SmartThings app does; that is kept as a
+fallback. Each call tries the library first and falls back to the binary way.
 """
 import concurrent.futures
 import ipaddress
@@ -14,7 +14,7 @@ import time
 import uuid
 
 import requests
-from samsungtvws import SamsungTVWS
+from samsungframetv import SamsungTVWS
 
 import config
 
@@ -61,10 +61,10 @@ def _send_image_binary(a, data, matte, timeout=15):
 
 def send_image(a, data, matte='none'):
     try:
-        return _send_image_binary(a, data, matte)
-    except Exception:  # noqa: BLE001  newer firmware: the library's own upload
-        a.close()
         return a.upload(data, file_type='JPEG', matte=matte, portrait_matte=matte)
+    except Exception:  # noqa: BLE001  2017 firmware: one binary frame
+        a.close()
+        return _send_image_binary(a, data, matte)
 
 
 def _thumbnail_binary(a, content_id, timeout=15):
@@ -92,15 +92,15 @@ def _thumbnail_binary(a, content_id, timeout=15):
 
 def get_thumbnail(a, content_id):
     try:
-        return _thumbnail_binary(a, content_id)
-    except Exception:  # noqa: BLE001  newer firmware: the library's own method
-        a.close()
         data = a.get_thumbnail(content_id)
         if isinstance(data, dict):
             data = next(iter(data.values()))
         if isinstance(data, list):
             data = data[0]
         return bytes(data)
+    except Exception:  # noqa: BLE001  2017 firmware: the thumbnail arrives on the websocket
+        a.close()
+        return _thumbnail_binary(a, content_id)
 
 
 def status(ip):
