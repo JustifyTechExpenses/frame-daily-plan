@@ -6,7 +6,7 @@ services:
     # Host networking lets the app find your Frame on the local network.
     network_mode: host
     environment:
-      TZ: Europe/London          # your time zone
+      TZ: America/New_York          # your time zone
       # PORT: "8765"             # web page port
       # FRAME_PLAN_PASSWORD: ""  # optional password for the web page
     volumes:
