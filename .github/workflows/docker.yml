@@ -25,7 +25,7 @@ jobs:
       - id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/justifytechexpenses/frame-daily-plan  # registry names must be lowercase
+          images: ghcr.io/outsidenwnc/frame-daily-plan  # registry names must be lowercase
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=semver,pattern={{version}}
