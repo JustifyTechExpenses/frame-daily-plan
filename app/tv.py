@@ -10,6 +10,7 @@ import ipaddress
 import json
 import os
 import socket
+import time
 import uuid
 
 import requests
@@ -35,7 +36,7 @@ def connect(ip):
     return _tv(ip, 30).art()
 
 
-def _send_image_binary(a, data, matte):
+def _send_image_binary(a, data, matte, timeout=15):
     if a.connection is None:
         a.open()
     upload_id = str(uuid.uuid4())
@@ -43,7 +44,19 @@ def _send_image_binary(a, data, matte):
     outer = {'method': 'ms.channel.emit', 'params': {'data': json.dumps(inner), 'to': 'host', 'event': 'art_app_request'}}
     header = json.dumps(outer, separators=(',', ':')).encode()
     a.connection.send_binary(len(header).to_bytes(2, 'big') + header + data)
-    return a.wait_for_response('image_added', upload_id)['content_id']
+    # Newer Frames (2018+) ignore this upload but keep sending other events, so the
+    # library's wait_for_response would wait forever. Give up after `timeout` seconds.
+    deadline = time.time() + timeout
+    a.connection.settimeout(timeout)
+    while time.time() < deadline:
+        msg = a.get_websocket_message()
+        if msg.get('request_id', msg.get('id')) != upload_id:
+            continue
+        if msg.get('event') == 'error':
+            raise RuntimeError(f'send_image failed: {msg}')
+        if msg.get('event') == 'image_added':
+            return msg['content_id']
+    raise TimeoutError('no image_added reply (newer Frame?)')
 
 
 def send_image(a, data, matte='none'):
@@ -54,7 +67,7 @@ def send_image(a, data, matte='none'):
         return a.upload(data, file_type='JPEG', matte=matte, portrait_matte=matte)
 
 
-def _thumbnail_binary(a, content_id, timeout=30):
+def _thumbnail_binary(a, content_id, timeout=15):
     if a.connection is None:
         a.open()
     req_id = str(uuid.uuid4())
@@ -63,7 +76,8 @@ def _thumbnail_binary(a, content_id, timeout=30):
     a.connection.send(json.dumps({'method': 'ms.channel.emit',
                                   'params': {'event': 'art_app_request', 'to': 'host', 'data': json.dumps(inner)}}))
     a.connection.settimeout(timeout)
-    for _ in range(50):
+    deadline = time.time() + timeout
+    while time.time() < deadline:
         raw = a.connection.recv()
         if isinstance(raw, str):
             if '"error"' in raw and req_id in raw:
