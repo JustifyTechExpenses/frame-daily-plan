@@ -8,3 +8,6 @@ recurring-ical-events==3.8.0
 holidays==0.84
 flask==3.1.2
 waitress==3.0.2
+pyatv==0.18.0
+# srptools 2.0 changed its API and breaks pyatv pairing
+srptools==1.0.1

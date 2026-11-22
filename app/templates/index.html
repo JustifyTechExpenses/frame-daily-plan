@@ -84,6 +84,38 @@
     </div>
   </section>
 
+  <section class="card" id="appletv">
+    <h2>{{ t.appletv }}</h2>
+    <p class="hint">{{ t.atv_hint }}</p>
+    <p class="hint">{{ t.atv_setting }}</p>
+    {% if atv_pairing %}
+    <form method="post" action="{{ url_for('appletv_pair_finish') }}" class="row">
+      <label for="atv-pin">{{ t.atv_pin }}</label>
+      <input type="text" id="atv-pin" name="pin" inputmode="numeric" autocomplete="one-time-code" style="max-width:120px" required autofocus>
+      <button class="primary">{{ t.atv_pin_btn }}</button>
+    </form>
+    {% elif cfg.appletv.id %}
+    <p id="atv-status">{{ t.appletv }} „{{ cfg.appletv.name }}“</p>
+    <form method="post" action="{{ url_for('appletv_enabled') }}">
+      <div class="row"><label class="inline"><input type="checkbox" name="enabled" {% if cfg.appletv.enabled %}checked{% endif %}> {{ t.atv_active }}</label></div>
+      <div class="row" style="margin-top:8px">
+        <label class="inline"><input type="checkbox" name="cec" {% if cfg.appletv.cec %}checked{% endif %}> {{ t.atv_cec }}</label>
+      </div>
+      <p class="hint">{{ t.atv_cec_hint }}</p>
+      <div class="row" style="margin-top:8px">
+        <label class="inline"><input type="checkbox" name="night_enabled" {% if cfg.appletv.night_off.enabled %}checked{% endif %}> {{ t.atv_night }}</label>
+        {{ t.from }} <input type="time" name="night_start" value="{{ cfg.appletv.night_off.start }}"> {{ t.to }} <input type="time" name="night_end" value="{{ cfg.appletv.night_off.end }}"> {{ t.oclock }}
+      </div>
+      <p class="hint">{{ t.atv_night_hint }}</p>
+      <button>{{ t.btn_save }}</button>
+    </form>
+    {% endif %}
+    {% if not atv_pairing %}
+    <div class="row" style="margin-top:10px"><button type="button" id="find-atv" {{ 'class=primary' if not cfg.appletv.id }}>{{ t.atv_repair if cfg.appletv.id else t.atv_find }}</button></div>
+    <div class="results" id="atv-results"></div>
+    {% endif %}
+  </section>
+
   <section class="card">
     <h2>{{ t.upload }}</h2>
     <p class="hint">{{ t.upload_hint }}</p>
@@ -190,7 +222,7 @@
     <pre>{% for line in log %}{{ line }}
 {% else %}{{ t.log_empty }}{% endfor %}</pre>
   </section>
-  <p class="hint" style="text-align:center">Weather data by <a href="https://open-meteo.com/" style="color:inherit">Open-Meteo.com</a> (CC BY 4.0)</p>
+  <p class="hint" style="text-align:center">Weather data by <a href="https://open-meteo.com/" style="color:inherit">Open-Meteo.com</a> (CC BY 4.0) · Version {{ version }}</p>
 </main>
 <script>
   const T = {{ {'tv': t.tv, 'ok': t.reachable, 'bad': t.unreachable, 'unknown': t.unknown, 'art': t.art_mode, 'on': t.on, 'off': t.off, 'cur': t.current_image}|tojson }};
@@ -224,6 +256,24 @@
       choices(box, d.results, '{{ url_for("set_place") }}', p => [['label', p.label], ['lat', p.lat], ['lon', p.lon], ['timezone', p.timezone || ''], ['country_code', p.country_code || '']]);
     });
   };
+  const A = {{ {'none': t.atv_none, 'pair': t.atv_pair, 'ok': t.atv_connected, 'notyet': t.atv_not_connected, 'awake': t.atv_awake, 'asleep': t.atv_asleep, 'name': cfg.appletv.name, 'title': t.appletv}|tojson }};
+  const findAtv = document.getElementById('find-atv');
+  if (findAtv) findAtv.onclick = () => {
+    const box = document.getElementById('atv-results'); box.textContent = W.searching;
+    fetch('{{ url_for("appletv_discover") }}').then(r => r.json()).then(d => {
+      if (!d.devices.length) { box.textContent = A.none; return; }
+      box.innerHTML = d.devices.map(a => '<form method="post" action="{{ url_for("appletv_pair_start") }}">'
+        + '<input type="hidden" name="id" value="' + esc(a.id) + '"><input type="hidden" name="address" value="' + esc(a.address) + '">'
+        + '<button>' + A.pair + '</button> ' + esc(a.name + ' – ' + a.address) + '</form>').join('');
+    }).catch(() => { box.textContent = A.none; });
+  };
+  const atvStatus = document.getElementById('atv-status');
+  if (atvStatus) fetch('{{ url_for("appletv_status") }}').then(r => r.json()).then(s => {
+    atvStatus.innerHTML = esc(A.title + ' „' + A.name + '“') + ': ' + (s.connected
+      ? '<b class="ok">' + A.ok + '</b> · ' + (s.awake ? A.awake : A.asleep)
+      : '<b class="bad">' + A.notyet + '</b>');
+  });
+
   const country = document.getElementById('hol_country'), region = document.getElementById('hol_subdiv');
   function loadRegions() {
     if (!country.value) { region.innerHTML = '<option value="">–</option>'; return; }

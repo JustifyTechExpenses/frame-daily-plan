@@ -10,6 +10,10 @@ COPY requirements.txt .
 RUN pip install -r requirements.txt
 COPY app/ .
 
+# the Git commit this image was built from, shown at the bottom of the web page
+ARG REVISION=dev
+ENV APP_VERSION=$REVISION
+
 VOLUME /data
 EXPOSE 8765
 HEALTHCHECK --interval=1m --timeout=5s --start-period=20s \

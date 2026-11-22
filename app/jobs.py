@@ -212,6 +212,14 @@ def _due(cfg, state, now):
     return 'restore' if state.get('restore_due') else None
 
 
+def _wake_for_plan(cfg):
+    """If the Apple TV feature switches the Frame off at night, switch it back on for the plan."""
+    if not cfg.get('appletv', {}).get('night_off', {}).get('enabled'):
+        return
+    import appletv  # here, because appletv imports this module
+    appletv.wake_to_art(cfg)
+
+
 def scheduler():
     retry_at = 0.0
     while True:
@@ -219,6 +227,8 @@ def scheduler():
             cfg = config.load()
             action = _due(cfg, load_state(), now_local(cfg))
             if action and time.time() >= retry_at:
+                if action == 'show':
+                    _wake_for_plan(cfg)
                 (show_plan if action == 'show' else restore)(cfg)
         except Exception as e:  # noqa: BLE001  e.g. TV switched off: try again in a few minutes
             log(f'Error ({type(e).__name__}: {e}), retrying in {RETRY_AFTER // 60} minutes')

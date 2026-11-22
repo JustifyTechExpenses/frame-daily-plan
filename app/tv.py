@@ -14,11 +14,38 @@ import time
 import uuid
 
 import requests
-from samsungframetv import SamsungTVWS
+# from samsungframetv import SamsungTVWS
+from samsungtvws import SamsungTVWS, exceptions, helper
+from samsungtvws import art as _art
+from samsungtvws.connection import SamsungTVWSConnection
 
 import config
 
 NAME = 'Frame Daily Plan'
+
+# Right after a new device was allowed, the Frame first announces it on the art channel
+# ("ms.channel.clientConnect", carrying the new token) and only then says "ready". The
+# library expects "ready" as the very first message and gives up; skip those notices.
+_NOTICES = ('ms.channel.clientConnect', 'ms.channel.clientDisconnect')
+
+
+def _art_open(self):
+    if self.connection:
+        return self.connection
+    SamsungTVWSConnection.open(self)
+    for _ in range(10):
+        response = helper.process_api_response(self.connection.recv())
+        event = response.get('event', '*')
+        self._websocket_event(event, response)
+        if event == _art.MS_CHANNEL_READY_EVENT:
+            return self.connection
+        if event not in _NOTICES:
+            break
+    self.close()
+    raise exceptions.ConnectionFailure(response)
+
+
+_art.SamsungTVArt.open = _art_open
 
 
 def _tv(ip, timeout):

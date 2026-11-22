@@ -15,6 +15,7 @@ from waitress import serve
 
 import holidays  # noqa: E402
 
+import appletv  # noqa: E402
 import config  # noqa: E402
 import i18n  # noqa: E402
 import plan_data  # noqa: E402
@@ -48,9 +49,10 @@ def index():
     setup = {'tv': bool(cfg.get('tv_ip')), 'paired': os.path.exists(os.path.join(config.DATA, 'paired')),
              'place': cfg['weather'].get('lat') is not None, 'calendar': bool(cfg['calendars'])}
     return render_template('index.html', cfg=cfg, state=jobs.load_state(), log=list(jobs.recent)[-40:][::-1],
-                           colors=config.COLORS, lang=lang, t=i18n.texts(lang), setup=setup,
+                           colors=config.COLORS, lang=lang, version=os.environ.get('APP_VERSION', 'dev')[:7], t=i18n.texts(lang), setup=setup,
                            setup_done=all(setup.values()), countries=sorted(holidays.list_supported_countries()),
-                           has_preview=os.path.exists(jobs.PREVIEW), message=request.args.get('msg'))
+                           has_preview=os.path.exists(jobs.PREVIEW), message=request.args.get('msg'),
+                           atv_pairing=appletv.pairing_in_progress())
 
 
 @app.get('/discover')
@@ -144,6 +146,74 @@ def pair():
         open(os.path.join(config.DATA, 'paired'), 'w').close()
     jobs.log(f'Connect: {text}')
     return redirect(url_for('index', msg=f"{t['connected'] if ok else t['not_connected']} – {text}"))
+
+
+@app.get('/appletv/discover')
+@protected
+def appletv_discover():
+    return {'devices': appletv.discover()}
+
+
+@app.get('/appletv/status')
+@protected
+def appletv_status():
+    return appletv.status()
+
+
+@app.post('/appletv/pair-start')
+@protected
+def appletv_pair_start():
+    f = request.form
+    t = ui()
+    try:
+        name = appletv.pair_start(f['id'], f.get('address', ''))
+    except Exception as e:  # noqa: BLE001
+        jobs.log(f'Apple TV pairing failed: {e}')
+        return redirect(url_for('index', msg=f"{t['atv_pair_failed']}: {e}") + '#appletv')
+    cfg = config.load()
+    cfg['appletv'].update({'id': f['id'], 'name': name, 'address': f.get('address', ''), 'enabled': False})
+    config.save(cfg)
+    return redirect(url_for('index', msg=t['atv_enter_pin']) + '#appletv')
+
+
+@app.post('/appletv/pair-finish')
+@protected
+def appletv_pair_finish():
+    t = ui()
+    try:
+        ok = appletv.pair_finish(request.form.get('pin', '').strip())
+    except Exception as e:  # noqa: BLE001
+        ok, err = False, str(e)
+    else:
+        err = ''
+    if not ok:
+        jobs.log(f'Apple TV pairing failed {err}')
+        if 'not connected' in err:  # the Apple TV closes the PIN screen after about 30 seconds
+            return redirect(url_for('index', msg=t['atv_too_slow']) + '#appletv')
+        return redirect(url_for('index', msg=t['atv_pair_failed'] + (f': {err}' if err else '')) + '#appletv')
+    cfg = config.load()
+    cfg['appletv']['enabled'] = True
+    config.save(cfg)
+    jobs.log(f"Apple TV “{cfg['appletv']['name']}” paired")
+    return redirect(url_for('index', msg=t['atv_paired']) + '#appletv')
+
+
+@app.post('/appletv/enabled')
+@protected
+def appletv_enabled():
+    cfg = config.load()
+    f = request.form
+    cfg['appletv']['enabled'] = 'enabled' in f and bool(cfg['appletv'].get('id'))
+    cfg['appletv']['cec'] = 'cec' in f
+    night = cfg['appletv'].setdefault('night_off', {})
+    night.update({'enabled': 'night_enabled' in f, 'start': f.get('night_start') or night.get('start', '23:00'),
+                  'end': f.get('night_end') or night.get('end', '06:00')})
+    if night['start'] == night['end']:
+        return redirect(url_for('index', msg=ui()['atv_night_same']) + '#appletv')
+    config.save(cfg)
+    jobs.log('Apple TV → Art Mode ' + ('on' if cfg['appletv']['enabled'] else 'off')
+             + (f", off completely {night['start']}–{night['end']}" if night['enabled'] else ''))
+    return redirect(url_for('index', msg=ui()['saved']) + '#appletv')
 
 
 @app.get('/preview.jpg')
@@ -269,6 +339,7 @@ def main():
     os.makedirs(config.DATA, exist_ok=True)
     jobs.log('Frame Daily Plan started')
     jobs.start_scheduler()
+    appletv.start()
     serve(app, host='0.0.0.0', port=int(os.environ.get('PORT', '8765')), threads=4)
 
 
