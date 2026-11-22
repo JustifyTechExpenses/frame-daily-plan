@@ -1,6 +1,6 @@
 services:
   frame-daily-plan:
-    image: ghcr.io/justifytechexpenses/frame-daily-plan:latest
+    image: ghcr.io/outsidenwnc/frame-daily-plan:latest
     container_name: frame-daily-plan
     restart: unless-stopped
     # Host networking lets the app find your Frame on the local network.
