@@ -1,6 +1,6 @@
 # Frame Daily Plan
 
-**Project page:** https://justifytechexpenses.github.io/frame-daily-plan/
+**Project page:** https://github.com/outsidenwnc/frame-daily-plan
 
 A calm morning planner for the **Samsung The Frame** TV. Each morning (by default 7:00 to 10:00) your Frame shows the family's day in Art Mode instead of a painting:
 
