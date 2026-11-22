@@ -53,7 +53,7 @@ Art Mode is quiet, ad-free and always on the wall, so it's a good place for a fa
    ```yaml
    services:
      frame-daily-plan:
-       image: ghcr.io/justifytechexpenses/frame-daily-plan:latest
+       image: ghcr.io/outsidenwnc/frame-daily-plan:latest
        container_name: frame-daily-plan
        restart: unless-stopped
        network_mode: host
@@ -70,7 +70,7 @@ Art Mode is quiet, ad-free and always on the wall, so it's a good place for a fa
 
 ```bash
 mkdir frame-daily-plan && cd frame-daily-plan
-curl -O https://raw.githubusercontent.com/JustifyTechExpenses/frame-daily-plan/main/docker-compose.yml
+curl -O https://raw.githubusercontent.com/outsidenwnc/frame-daily-plan/main/docker-compose.yml
 docker compose up -d
 ```
 
